@@ -23,13 +23,14 @@ app.get("/", (req, res) => {
 async function run() {
     try {
         await client.connect();
-        const collection = client.db("itembase").collection("items");
+        const productsCollection = client.db("comparts").collection("products");
+        const ordersCollection = client.db("comparts").collection("orders");
 
         // get items data from database
 
         app.get("/items", async (req, res) => {
             const query = {};
-            const cursor = collection.find(query);
+            const cursor = productsCollection.find(query);
 
             const result = await cursor.toArray();
 
@@ -42,7 +43,17 @@ async function run() {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
 
-            const result = await collection.findOne(query);
+            const result = await productsCollection.findOne(query);
+
+            res.send(result);
+        });
+
+        // post a specific order to database
+
+        app.post("/order", async (req, res) => {
+            const order = req.body;
+
+            const result = await ordersCollection.insertOne(order);
 
             res.send(result);
         });
