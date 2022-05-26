@@ -57,6 +57,25 @@ async function run() {
 
             res.send(result);
         });
+
+        // update a specific item data after a order to database
+
+        app.put("/item/:id", async (req, res) => {
+            const id = req.params.id;
+            const item = req.body.updateItem;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+
+            const update = {
+                $set: item,
+            };
+
+            const result = await productsCollection.updateOne(
+                filter,
+                update,
+                options
+            );
+        });
     } finally {
         // await client.close();
     }
