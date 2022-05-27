@@ -4,6 +4,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.STRIPE_KEY);
 
 // middleware
 app.use(cors());
@@ -25,6 +26,23 @@ async function run() {
         await client.connect();
         const productsCollection = client.db("comparts").collection("products");
         const ordersCollection = client.db("comparts").collection("orders");
+
+        // payment stripe code
+
+        app.post("/create-payment-intent", async (req, res) => {
+            const price = req.body.price;
+            const amount = price * 100;
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ["card"],
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        });
 
         // get items data from database
 
@@ -75,6 +93,8 @@ async function run() {
                 update,
                 options
             );
+
+            res.send(result);
         });
 
         // get orders item from database
@@ -96,6 +116,41 @@ async function run() {
             const query = { _id: ObjectId(id) };
 
             const result = await ordersCollection.deleteOne(query);
+
+            res.send(result);
+        });
+
+        // get specific order item data from database
+
+        app.get("/order/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+
+            const result = await ordersCollection.findOne(query);
+
+            res.send(result);
+        });
+
+        // update a specific order item data after a order to database
+
+        app.put("/order/:id", async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+
+            const update = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId,
+                },
+            };
+
+            const result = await ordersCollection.updateOne(
+                filter,
+                update,
+                options
+            );
 
             res.send(result);
         });
