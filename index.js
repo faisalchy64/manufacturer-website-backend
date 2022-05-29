@@ -335,6 +335,36 @@ async function run() {
 
             res.send(result);
         });
+
+        // shipping order item
+
+        app.put("/shipping/:id", async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+
+            const update = {
+                $set: { shipping: true },
+            };
+
+            const result = await ordersCollection.updateOne(
+                filter,
+                update,
+                options
+            );
+
+            res.send(result);
+        });
+
+        // admin delete order
+
+        app.delete("/delete/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await ordersCollection.deleteOne(query);
+
+            res.send(result);
+        });
     } finally {
         // await client.close();
     }
