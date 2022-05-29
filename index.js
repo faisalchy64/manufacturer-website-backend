@@ -19,13 +19,12 @@ const client = new MongoClient(uri, {
 });
 
 function verifyJWT(req, res, next) {
-    const authorization = req.headers.authorization;
-    console.log(authorization);
-    if (!authorization) {
+    const authorized = req.headers.authorization;
+    if (!authorized) {
         return res.status(401).send({ message: "unauthorized access" });
     }
 
-    const token = authorization.split(" ")[1];
+    const token = authorized.split(" ")[1];
 
     jwt.verify(token, process.env.JWT_TOKEN, function (err, decoded) {
         if (err) {
@@ -35,7 +34,6 @@ function verifyJWT(req, res, next) {
         req.decoded = decoded;
         next();
     });
-    console.log("ami jainai");
 }
 
 app.get("/", (req, res) => {
@@ -94,15 +92,30 @@ async function run() {
 
         // make a admin
 
-        app.put("/user/admin/:email", verifyJWT, async (req, res) => {
-            const authorization = req.headers.authorization;
-            console.log(authorization);
+        // app.put("/user/admin/:email", verifyJWT, async (req, res) => {
+        //     const email = req.params.email;
+        //     const requester = req.decoded.email;
+
+        //     const account = await usersCollection.findOne({ email: requester });
+
+        //     if (account.role === "admin") {
+        //         const filter = { email };
+        //         const update = { $set: { role: "admin" } };
+
+        //         const result = await usersCollection.updateOne(filter, update);
+
+        //         res.send(result);
+        //     } else {
+        //         return res.status(403).send({ message: "forbidden access" });
+        //     }
+        // });
+
+        app.put("/user/admin/:email", async (req, res) => {
             const email = req.params.email;
-            const requester = req.decoded.email;
+            const user = req.body;
+            const admin = await usersCollection.findOne({ email: user.email });
 
-            const account = await usersCollection.findOne({ email: requester });
-
-            if (account.role === "admin") {
+            if (admin?.role === "admin") {
                 const filter = { email };
                 const update = { $set: { role: "admin" } };
 
@@ -120,7 +133,7 @@ async function run() {
             const email = req.params.email;
             const user = await usersCollection.findOne({ email });
 
-            const admin = user.role === "admin";
+            const admin = user?.role === "admin";
 
             res.send({ admin });
         });
@@ -130,16 +143,17 @@ async function run() {
         app.post("/create-payment-intent", async (req, res) => {
             const price = req.body.price;
             const amount = price * 100;
+            if (typeof price === "number") {
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: amount,
+                    currency: "usd",
+                    payment_method_types: ["card"],
+                });
 
-            const paymentIntent = await stripe.paymentIntents.create({
-                amount: amount,
-                currency: "usd",
-                payment_method_types: ["card"],
-            });
-
-            res.send({
-                clientSecret: paymentIntent.client_secret,
-            });
+                res.send({
+                    clientSecret: paymentIntent.client_secret,
+                });
+            }
         });
 
         // get items data from database
